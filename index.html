@@ -3,299 +3,151 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>PDF Toolbox — merge • split • rotate • reorder • images→pdf</title>
+  <title>FastPDF Tools — Simple PDF toolbox</title>
   <style>
-    :root{--bg:#f5f7fb;--card:#fff;--accent:#0b76ef;--muted:#666}
+    :root{--accent:#6b46ff;--muted:#6b7280;--bg:#f6f7fb;--card:#ffffff}
     *{box-sizing:border-box}
-    body{font-family:Inter, system-ui, Arial; background:var(--bg); margin:0;padding:28px; color:#111}
-    .wrap{max-width:1100px;margin:0 auto}
-    header{display:flex;align-items:center;gap:16px;margin-bottom:18px}
-    header h1{font-size:1.2rem;margin:0}
-    .controls{display:grid;grid-template-columns:1fr 360px;gap:16px}
-    .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 6px 20px rgba(12,24,40,0.06)}
-    label{display:block;font-weight:600;margin-bottom:8px}
-    input[type=file]{width:100%}
-    button{background:var(--accent);color:white;border:0;padding:8px 12px;border-radius:8px;cursor:pointer}
-    .muted{color:var(--muted);font-size:0.9rem}
-    .small{font-size:0.85rem}
+    body{margin:0;font-family:Inter,system-ui,Arial;background:var(--bg);color:#111}
+    header{background:white;border-bottom:1px solid #edf2f7}
+    .container{max-width:1100px;margin:0 auto;padding:20px}
+    .nav{display:flex;align-items:center;gap:16px;padding:12px 0}
+    .logo{display:flex;align-items:center;gap:10px}
+    .logo img{width:36px;height:36px;border-radius:6px}
+    .hero{padding:36px 0;text-align:center}
+    .hero h1{margin:0;font-size:28px}
+    .hero p{color:var(--muted);margin-top:8px}
 
-    /* list for selected files */
-    .file-list{margin-top:8px;border-radius:8px;padding:8px;background:#fbfdff;border:1px solid #eef4ff;max-height:220px;overflow:auto}
-    .file-item{display:flex;align-items:center;justify-content:space-between;padding:6px;border-radius:6px}
-    .file-item .meta{display:flex;gap:8px;align-items:center}
-    .btn-ghost{background:transparent;border:1px solid #e6eefc;color:var(--accent);padding:6px 8px;border-radius:8px}
+    .tools{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:26px}
+    .card{background:var(--card);padding:18px;border-radius:10px;box-shadow:0 6px 18px rgba(12,24,40,0.04);border:1px solid #f1f5f9;cursor:pointer}
+    .card .icon{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px}
+    .card h3{margin:0;font-size:15px}
+    .card p{margin:8px 0 0;color:var(--muted);font-size:13px}
 
-    /* preview */
-    iframe.preview{width:100%;height:520px;border-radius:8px;border:1px solid #e6eefc}
+    .footer{padding:28px 0;color:var(--muted);text-align:center;font-size:13px}
 
     /* responsive */
-    @media(max-width:980px){.controls{grid-template-columns:1fr} iframe.preview{height:360px}}
+    @media(max-width:900px){ .tools{grid-template-columns:repeat(2,1fr)} }
+    @media(max-width:600px){ .tools{grid-template-columns:1fr} .hero h1{font-size:22px} }
 
-    /* reorder UI */
-    .reorder{display:flex;gap:8px;align-items:center}
-    .order-input{width:100%;padding:8px;border-radius:8px;border:1px solid #ddd}
-
-    footer{margin-top:14px;color:var(--muted);font-size:0.9rem}
+    /* small UI for action area */
+    .muted{color:var(--muted);font-size:13px}
+    .sr-only{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px)}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <!-- local image path used as default logo — replace if you want -->
-      <img src="/mnt/data/f89c27b5-6765-4af4-87a7-1dd3fb05a691.png" alt="logo" style="width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid #eaeaea">
-      <div>
-        <h1>PDF Toolbox — merge • split • rotate • reorder • images → PDF</h1>
-        <div class="muted">Upgraded UI with extra tools. All processing happens in the browser — files stay local.</div>
+  <header>
+    <div class="container nav">
+      <div class="logo">
+        <img src="/mnt/data/d0836d16-e55b-4b2a-be56-ac4dd5b26b84.png" alt="logo">
+        <strong>FastPDF Tools</strong>
       </div>
-    </header>
-
-    <div class="controls">
-      <div>
-        <div class="card">
-          <label>Upload PDF(s) or Images (drag & drop supported)</label>
-          <input id="dropArea" type="file" multiple accept="application/pdf, image/*" />
-          <div class="muted small">Tip: select multiple PDF files to merge. Selected files appear below — reorder using the buttons.</div>
-
-          <div class="file-list" id="fileList"></div>
-
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button id="mergeBtn">Merge PDFs</button>
-            <button id="splitBtn" class="btn-ghost">Split / Extract Pages</button>
-            <button id="rotateBtn" class="btn-ghost">Rotate Pages</button>
-            <button id="reorderBtn" class="btn-ghost">Reorder Pages</button>
-          </div>
-
-          <hr style="margin:12px 0;border:none;border-top:1px solid #f0f3f8">
-
-          <div style="display:flex;gap:8px;align-items:center">
-            <label style="margin:0;flex:0 0 120px">Images → PDF</label>
-            <input id="imgQuality" type="number" value="0.8" step="0.05" min="0.1" max="1.0" style="width:96px;padding:7px;border-radius:8px;border:1px solid #ddd">
-            <button id="img2pdfBtn" style="margin-left:auto">Convert</button>
-          </div>
-
-          <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
-            <button id="previewBtn" class="btn-ghost">Preview</button>
-            <button id="downloadBtn" disabled>Download Result</button>
-            <div id="outName" style="margin-left:8px;font-weight:600"></div>
-          </div>
-
-          <div id="log" class="muted small" style="margin-top:10px"></div>
-        </div>
-
-        <div style="margin-top:12px" class="card">
-          <label>Advanced actions</label>
-          <div style="display:grid;gap:8px">
-            <div>
-              <label class="small">Split / Extract pages (for single PDF)</label>
-              <input id="pagesInput" placeholder="e.g. 1-3,5" class="order-input small">
-              <div style="margin-top:8px"><button id="extractBtn">Create PDF with pages</button></div>
-            </div>
-
-            <div>
-              <label class="small">Rotate pages (for single PDF):</label>
-              <input id="rotatePages" placeholder="e.g. 1,3-4" class="order-input small">
-              <select id="rotateDeg" class="order-input small" style="margin-top:6px">
-                <option value="90">Rotate 90°</option>
-                <option value="180">Rotate 180°</option>
-                <option value="270">Rotate 270°</option>
-              </select>
-              <div style="margin-top:8px"><button id="applyRotate">Apply Rotation</button></div>
-            </div>
-
-            <div>
-              <label class="small">Reorder pages (for single PDF)</label>
-              <input id="reorderInput" placeholder="e.g. 3,1,2,4" class="order-input small">
-              <div style="margin-top:8px"><button id="applyReorder">Apply Order</button></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <div class="card">
-          <label>Preview</label>
-          <iframe id="previewFrame" class="preview" srcdoc="<p style='padding:20px;color:#666'>No preview yet — Run Preview after an action.</p>"></iframe>
-        </div>
-
-        <div style="margin-top:12px" class="card">
-          <label>How to use</label>
-          <ol style="margin:0 0 8px 18px">
-            <li>Add PDFs or images using the file picker (or drag & drop).</li>
-            <li>Use Merge / Split / Rotate / Reorder tools on the left.</li>
-            <li>Click Preview to inspect result, then Download.</li>
-          </ol>
-          <div class="muted small">If you want custom branding or layout changes (colors/logo/buttons), tell me — I will update the HTML and give you the new file to replace in your repo.</div>
-        </div>
-      </div>
+      <nav style="margin-left:auto;display:flex;gap:14px;align-items:center">
+        <a href="#tools" class="muted">Tools</a>
+        <a href="#about" class="muted">About</a>
+      </nav>
     </div>
+  </header>
 
-    <footer class="muted">Built for embedding into Google Sites — host with GitHub Pages and embed via the published URL.</footer>
-  </div>
+  <main class="container">
+    <section class="hero">
+      <h1>Every tool you need to work with PDFs — fast & simple</h1>
+      <p>Merge, split, convert images, rotate, reorder pages and more. All tools work in your browser — files stay on your device.</p>
+      <!-- Hidden file input kept for tool actions -->
+      <input id="fileInput" type="file" accept="application/pdf,image/*" multiple class="sr-only">
+    </section>
 
-  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <section id="tools">
+      <h2 style="text-align:center;margin-top:6px">Our Tools</h2>
+      <div class="tools">
+        <div class="card" data-tool="merge">
+          <div class="icon" style="background:#fff4f4;color:#ff6b6b">🧩</div>
+          <h3>Merge PDF</h3>
+          <p>Combine multiple PDF files into one document. Select files in the order you want them merged.</p>
+        </div>
+
+        <div class="card" data-tool="split">
+          <div class="icon" style="background:#fff7ed;color:#f59e0b">✂️</div>
+          <h3>Split PDF</h3>
+          <p>Extract specific pages or split a PDF into separate files.</p>
+        </div>
+
+        <div class="card" data-tool="compress">
+          <div class="icon" style="background:#f0fdf4;color:#16a34a">🗜️</div>
+          <h3>Compress PDF</h3>
+          <p>Reduce PDF file size (basic client-side image compression). For heavy compression use server tools.</p>
+        </div>
+
+        <div class="card" data-tool="img2pdf">
+          <div class="icon" style="background:#f8fafc;color:#3b82f6">🖼️</div>
+          <h3>Images → PDF</h3>
+          <p>Convert JPG/PNG images into a single PDF file.</p>
+        </div>
+
+        <div class="card" data-tool="rotate">
+          <div class="icon" style="background:#fff5f7;color:#db2777">🔁</div>
+          <h3>Rotate Pages</h3>
+          <p>Rotate selected pages (90°, 180°, 270°).</p>
+        </div>
+
+        <div class="card" data-tool="reorder">
+          <div class="icon" style="background:#f5f3ff;color:#6b46ff">🔀</div>
+          <h3>Reorder Pages</h3>
+          <p>Change the order of pages inside a PDF (enter sequence like 3,1,2).</p>
+        </div>
+
+        <div class="card" data-tool="security">
+          <div class="icon" style="background:#f0f9ff;color:#0369a1">🔓</div>
+          <h3>Unlock / Protect</h3>
+          <p>Remove or add basic password protection to PDF (client-side limited).</p>
+        </div>
+
+        <div class="card" data-tool="pdf2jpg">
+          <div class="icon" style="background:#fff8f0;color:#ff7b00">📝</div>
+          <h3>PDF → JPG</h3>
+          <p>Extract PDF pages as JPG images.</p>
+        </div>
+
+        <div class="card" data-tool="convert">
+          <div class="icon" style="background:#f8fafc;color:#475569">📄</div>
+          <h3>Convert to PDF</h3>
+          <p>Convert Word / PowerPoint / Excel files to PDF (client-side limited; Office files may require server).</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="about">
+      <h2 style="text-align:center;margin-top:36px">About FastPDF Tools</h2>
+      <p style="text-align:center;max-width:760px;margin:10px auto;color:var(--muted)">This simple PDF toolbox runs entirely in your browser using modern JavaScript libraries. Files are processed locally — we do not upload your files to any server. For advanced compression or heavy-duty conversions a server-based tool is recommended.</p>
+    </section>
+  </main>
+
+  <footer class="footer">© FastPDF Tools — Built for embedding in Google Sites</footer>
+
+  <!-- minimal JS: attach click on cards to open file picker or perform tool actions -->
   <script>
-    const { PDFDocument, degrees } = PDFLib;
-    const drop = document.getElementById('dropArea');
-    const fileListEl = document.getElementById('fileList');
-    const logEl = document.getElementById('log');
-    const previewFrame = document.getElementById('previewFrame');
-    const downloadBtn = document.getElementById('downloadBtn');
-    let lastPdfBytes = null, lastFileName = '';
-
-    // store File objects in array for ordering
-    const files = [];
-
-    function log(msg){ logEl.textContent = msg; }
-
-    function renderFileList(){
-      fileListEl.innerHTML = '';
-      files.forEach((f, i) => {
-        const div = document.createElement('div');
-        div.className = 'file-item';
-        div.innerHTML = `
-          <div class="meta"><strong>${f.name}</strong><div class="muted small">${(f.size/1024|0)} KB</div></div>
-          <div style="display:flex;gap:6px;align-items:center"> 
-            <button data-i="${i}" class="btn-up btn-ghost">↑</button>
-            <button data-i="${i}" class="btn-down btn-ghost">↓</button>
-            <button data-i="${i}" class="btn-remove btn-ghost">✕</button>
-          </div>`;
-        fileListEl.appendChild(div);
-      });
-    }
-
-    drop.addEventListener('change', e => handleFiles(Array.from(e.target.files)));
-
-    // basic drag/drop onto whole window
-    ['dragenter','dragover'].forEach(name=>{
-      window.addEventListener(name, e=>{ e.preventDefault(); });
-    });
-    window.addEventListener('drop', e=>{ e.preventDefault(); const dt = e.dataTransfer; if(dt && dt.files) handleFiles(Array.from(dt.files)); });
-
-    function handleFiles(list){
-      for(const f of list){
-        files.push(f);
-      }
-      renderFileList();
-      attachListButtons();
-    }
-
-    function attachListButtons(){
-      document.querySelectorAll('.btn-up').forEach(b=> b.onclick = e => { const i = +b.dataset.i; if(i>0){ const tmp = files[i-1]; files[i-1]=files[i]; files[i]=tmp; renderFileList(); attachListButtons(); } });
-      document.querySelectorAll('.btn-down').forEach(b=> b.onclick = e => { const i = +b.dataset.i; if(i<files.length-1){ const tmp = files[i+1]; files[i+1]=files[i]; files[i]=tmp; renderFileList(); attachListButtons(); } });
-      document.querySelectorAll('.btn-remove').forEach(b=> b.onclick = e => { const i = +b.dataset.i; files.splice(i,1); renderFileList(); attachListButtons(); });
-    }
-
-    // -- Merge PDFs --
-    document.getElementById('mergeBtn').onclick = async () => {
-      const pdfFiles = files.filter(f => f.type === 'application/pdf');
-      if(!pdfFiles.length){ alert('No PDF files selected to merge'); return; }
-      log('Merging ' + pdfFiles.length + ' PDFs...');
-      try{
-        const outDoc = await PDFDocument.create();
-        for(const f of pdfFiles){
-          const arr = await f.arrayBuffer();
-          const src = await PDFDocument.load(arr);
-          const copied = await outDoc.copyPages(src, src.getPageIndices());
-          copied.forEach(p=> outDoc.addPage(p));
+    document.querySelectorAll('.card[data-tool]').forEach(card=>{
+      card.addEventListener('click', ()=>{
+        const t = card.getAttribute('data-tool');
+        const input = document.getElementById('fileInput');
+        // for tools that need files, trigger file picker
+        if(['merge','split','img2pdf','compress','pdf2jpg','convert'].includes(t)){
+          input.value = null; // reset
+          input.click();
+          // after user selects files, you can handle them in change event
+          input.onchange = ()=> handleFilesForTool(t, input.files);
+        } else {
+          alert('Tool "' + t + '" opened. (Feature UI coming)');
         }
-        const out = await outDoc.save();
-        finishResult(out, 'merged.pdf');
-      }catch(e){ console.error(e); alert(e.message); }
-    };
-
-    // -- Split/Extract --
-    document.getElementById('extractBtn').onclick = async () => {
-      const pdfFile = files.find(f=> f.type==='application/pdf');
-      if(!pdfFile){ alert('Select at least one PDF'); return; }
-      const pagesStr = document.getElementById('pagesInput').value.trim();
-      if(!pagesStr){ alert('Enter pages to extract'); return; }
-      try{
-        const arr = await pdfFile.arrayBuffer();
-        const src = await PDFDocument.load(arr);
-        const total = src.getPageCount();
-        const indices = parseRanges(pagesStr, total);
-        if(indices.length===0){ alert('No valid pages'); return; }
-        const out = await PDFDocument.create();
-        const copied = await out.copyPages(src, indices);
-        copied.forEach(p=> out.addPage(p));
-        const bytes = await out.save();
-        finishResult(bytes, pdfFile.name.replace(/\.pdf$/i,'') + '_extract.pdf');
-      }catch(e){ console.error(e); alert(e.message); }
-    };
-
-    function parseRanges(str, max){
-      str = str.replace(/\s+/g,''); if(!str) return [];
-      const parts = str.split(','); const s = new Set();
-      for(const p of parts){ if(p.includes('-')){ const [a,b]=p.split('-').map(x=>parseInt(x,10)); if(!isNaN(a)&&!isNaN(b)) for(let i=Math.max(1,a); i<=Math.min(b,max); i++) s.add(i-1); } else { const n=parseInt(p,10); if(!isNaN(n) && n>=1 && n<=max) s.add(n-1); }}
-      return Array.from(s).sort((a,b)=>a-b);
-    }
-
-    // -- Rotate pages --
-    document.getElementById('applyRotate').onclick = async () => {
-      const pdfFile = files.find(f=> f.type==='application/pdf'); if(!pdfFile){ alert('Select a PDF'); return; }
-      const ranges = document.getElementById('rotatePages').value.trim(); const deg = parseInt(document.getElementById('rotateDeg').value,10);
-      if(!ranges){ alert('Enter pages to rotate'); return; }
-      try{
-        const arr = await pdfFile.arrayBuffer(); const src = await PDFDocument.load(arr);
-        const total = src.getPageCount(); const indices = parseRanges(ranges, total);
-        if(indices.length===0){ alert('No valid pages'); return; }
-        const out = await PDFDocument.create();
-        const allPages = await out.copyPages(src, src.getPageIndices());
-        allPages.forEach((p, idx)=>{
-          const newPage = out.addPage(p);
-          if(indices.includes(idx)){
-            newPage.setRotation(degrees(deg));
-          }
-        });
-        const bytes = await out.save(); finishResult(bytes, pdfFile.name.replace(/\.pdf$/i,'') + '_rotated.pdf');
-      }catch(e){ console.error(e); alert(e.message); }
-    };
-
-    // -- Reorder pages --
-    document.getElementById('applyReorder').onclick = async () => {
-      const pdfFile = files.find(f=> f.type==='application/pdf'); if(!pdfFile){ alert('Select a PDF'); return; }
-      const order = document.getElementById('reorderInput').value.trim(); if(!order){ alert('Enter order'); return; }
-      try{
-        const arr = await pdfFile.arrayBuffer(); const src = await PDFDocument.load(arr);
-        const total = src.getPageCount(); const parts = order.replace(/\s+/g,'').split(',').map(x=>parseInt(x,10));
-        if(parts.some(x=>isNaN(x)||x<1||x>total)){ alert('Invalid order values'); return; }
-        const out = await PDFDocument.create();
-        const copied = await out.copyPages(src, parts.map(x=>x-1)); copied.forEach(p=> out.addPage(p));
-        const bytes = await out.save(); finishResult(bytes, pdfFile.name.replace(/\.pdf$/i,'') + '_reordered.pdf');
-      }catch(e){ console.error(e); alert(e.message); }
-    };
-
-    // -- Images -> PDF --
-    async function imageFileToDataURL(file, quality){
-      return new Promise((res, rej)=>{
-        const fr = new FileReader(); const img = new Image();
-        fr.onload = e => { img.src = e.target.result; };
-        fr.onerror = ()=> rej('read error'); img.onload = ()=>{
-          const canvas = document.createElement('canvas'); const maxDim = 3508;
-          let w = img.naturalWidth, h = img.naturalHeight; if(Math.max(w,h) > maxDim){ const scale = maxDim / Math.max(w,h); w = Math.round(w*scale); h = Math.round(h*scale); }
-          canvas.width=w; canvas.height=h; canvas.getContext('2d').drawImage(img,0,0,w,h);
-          res(canvas.toDataURL('image/jpeg', quality));
-        }; img.onerror = ()=> rej('img load'); fr.readAsDataURL(file);
       });
+    });
+
+    function handleFilesForTool(tool, files){
+      if(!files || files.length === 0) return;
+      // basic demo actions: show names and which tool
+      const names = Array.from(files).map(f=>f.name).join(', ');
+      alert('Selected for ' + tool + ': ' + names);
+      // TODO: wire actual tool implementations (merge/split/etc.) here
     }
-
-    document.getElementById('img2pdfBtn').onclick = async ()=>{
-      const imgs = files.filter(f=> f.type && f.type.startsWith('image/'));
-      if(!imgs.length){ alert('No images selected'); return; }
-      const q = parseFloat(document.getElementById('imgQuality').value || '0.8');
-      try{
-        const pdf = await PDFDocument.create();
-        for(const im of imgs){ log('Processing '+im.name); const dataUrl = await imageFileToDataURL(im, q); const b64 = dataUrl.split(',')[1]; const bytes = Uint8Array.from(atob(b64), c=>c.charCodeAt(0)); const embedded = await pdf.embedJpg(bytes); const w=embedded.width, h=embedded.height; const page = pdf.addPage([w,h]); page.drawImage(embedded,{x:0,y:0,width:w,height:h}); }
-        const out = await pdf.save(); finishResult(out,'images_to_pdf.pdf');
-      }catch(e){ console.error(e); alert(e.message); }
-    };
-
-    // -- Preview and download helpers --
-    document.getElementById('previewBtn').onclick = ()=>{ if(!lastPdfBytes) { alert('No result to preview — run an action first'); return; } const blob = new Blob([lastPdfBytes], {type:'application/pdf'}); const url = URL.createObjectURL(blob); previewFrame.src = url; log('Preview ready'); };
-    function finishResult(bytes, name){ lastPdfBytes = bytes; lastFileName = name; downloadBtn.disabled=false; document.getElementById('outName').textContent = name; log('Ready: ' + name + ' (' + (bytes.byteLength/1024|0) + ' KB)'); }
-    downloadBtn.onclick = ()=>{ if(!lastPdfBytes) return; const blob = new Blob([lastPdfBytes], {type:'application/pdf'}); saveAs(blob, lastFileName||'output.pdf'); };
-
   </script>
 </body>
 </html>
