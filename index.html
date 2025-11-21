@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PDF Converter (merge / split / image→pdf)</title>
+  <style>
+    body { font-family: system-ui, Arial; max-width: 980px; margin: 28px auto; padding: 12px; line-height: 1.4; }
+    h1 { font-size: 1.4rem; margin-bottom: 4px; }
+    .grid { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+    .card { border-radius: 10px; padding: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); background:#fff; }
+    label { display:block; font-weight:600; margin-bottom:6px; }
+    input[type=file] { margin-bottom:10px; }
+    button { padding:8px 12px; border-radius:8px; border: 1px solid #e0e0e0; cursor:pointer; background:#1a73e8; color:white; }
+    small { color:#555; }
+    .log { background:#f7f7f8; padding:8px; border-radius:8px; max-height:160px; overflow:auto; font-size:0.9rem; }
+    .full { grid-column: 1 / -1; }
+    @media(max-width:780px){ .grid{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <h1>PDF Converter — merge / split / image → PDF</h1>
+  <p><small>All processing happens in your browser. Choose files, pick an action, then Download.</small></p>
+
+  <div class="grid">
+    <div class="card">
+      <label>1) Merge PDF files</label>
+      <input id="mergeFiles" type="file" accept="application/pdf" multiple />
+      <div>
+        <button id="mergeBtn">Merge selected PDFs</button>
+      </div>
+      <p><small>Select PDFs in the order you want them merged.</small></p>
+    </div>
+
+    <div class="card">
+      <label>2) Split PDF (extract pages)</label>
+      <input id="splitFile" type="file" accept="application/pdf" />
+      <div style="margin-top:8px;">
+        <label>Pages to extract (e.g. <code>1-3,5,7</code>)</label>
+        <input id="pagesInput" type="text" placeholder="1-2,4" style="width:100%; padding:8px; border-radius:6px; border:1px solid #ddd;">
+      </div>
+      <div style="margin-top:8px;">
+        <button id="splitBtn">Create PDF with selected pages</button>
+      </div>
+      <p><small>Pages are 1-based. Example: "1-3,5" = pages 1,2,3 and 5.</small></p>
+    </div>
+
+    <div class="card">
+      <label>3) Images → PDF (PNG / JPG)</label>
+      <input id="imgFiles" type="file" accept="image/*" multiple />
+      <div style="margin-top:8px;">
+        <label>Compress images before embedding? (0.1 - 1.0)</label>
+        <input id="imgQuality" type="number" value="0.8" step="0.05" min="0.1" max="1.0" style="width:96px; padding:6px; border-radius:6px; border:1px solid #ddd;">
+      </div>
+      <div style="margin-top:8px;">
+        <button id="img2pdfBtn">Convert images to PDF</button>
+      </div>
+      <p><small>Images will be added in the order you select them.</small></p>
+    </div>
+
+    <div class="card full">
+      <label>Output</label>
+      <div style="display:flex; gap:12px; align-items:center;">
+        <button id="downloadBtn" disabled>Download last result</button>
+        <div id="outName" style="font-weight:600;color:#333;"></div>
+      </div>
+      <div style="margin-top:8px" class="log" id="log"></div>
+    </div>
+  </div>
+
+  <!-- pdf-lib (browser build) and FileSaver -->
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <script>
+    const { PDFDocument } = PDFLib;
+    const logEl = document.getElementById('log');
+    const downloadBtn = document.getElementById('downloadBtn');
+    let lastPdfBytes = null;
+    let lastFileName = '';
+
+    function log(...args){
+      const t = new Date().toLocaleTimeString();
+      logEl.innerHTML = t + ' — ' + args.join(' ') + '<br/>' + logEl.innerHTML;
+    }
+
+    // utility to read file as ArrayBuffer
+    function readFileAsArrayBuffer(file){
+      return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = e => res(e.target.result);
+        r.onerror = e => rej(e);
+        r.readAsArrayBuffer(file);
+      });
+    }
+
+    // Merge PDFs
+    document.getElementById('mergeBtn').onclick = async () => {
+      const input = document.getElementById('mergeFiles');
+      if(!input.files.length){ alert('Select PDF files to merge'); return; }
+      log('Merging', input.files.length, 'files...');
+      try{
+        const mergedPdf = await PDFDocument.create();
+        for(const file of input.files){
+          const arr = await readFileAsArrayBuffer(file);
+          const src = await PDFDocument.load(arr);
+          const srcPages = await mergedPdf.copyPages(src, src.getPageIndices());
+          srcPages.forEach(p => mergedPdf.addPage(p));
+          log('Appended:', file.name);
+        }
+        const out = await mergedPdf.save();
+        lastPdfBytes = out;
+        lastFileName = 'merged.pdf';
+        downloadBtn.disabled = false;
+        document.getElementById('outName').textContent = lastFileName;
+        log('Merge done —', (out.byteLength/1024|0), 'KB');
+      } catch(e){ console.error(e); alert('Error: ' + e.message); }
+    };
+
+    // Split (extract specific pages)
+    function parsePageRanges(str, max){
+      // returns zero-based page indices
+      str = (str||'').replace(/\s+/g,'');
+      if(!str) return [];
+      const parts = str.split(',');
+      const pages = new Set();
+      for(const p of parts){
+        if(p.includes('-')){
+          const [a,b] = p.split('-').map(x=>parseInt(x,10));
+          if(isNaN(a) || isNaN(b)) continue;
+          for(let i = Math.max(1,a); i<=Math.min(b,max); i++) pages.add(i-1);
+        } else {
+          const n = parseInt(p,10);
+          if(!isNaN(n) && n>=1 && n<=max) pages.add(n-1);
+        }
+      }
+      return Array.from(pages).sort((a,b)=>a-b);
+    }
+
+    document.getElementById('splitBtn').onclick = async () => {
+      const input = document.getElementById('splitFile');
+      const pagesStr = document.getElementById('pagesInput').value;
+      if(!input.files.length){ alert('Select a PDF file'); return; }
+      try{
+        const file = input.files[0];
+        const arr = await readFileAsArrayBuffer(file);
+        const src = await PDFDocument.load(arr);
+        const total = src.getPageCount();
+        const indices = parsePageRanges(pagesStr, total);
+        if(indices.length === 0){ alert('No pages selected or invalid format'); return; }
+        const outDoc = await PDFDocument.create();
+        const copied = await outDoc.copyPages(src, indices);
+        copied.forEach(p=> outDoc.addPage(p));
+        const out = await outDoc.save();
+        lastPdfBytes = out;
+        lastFileName = file.name.replace(/\.pdf$/i,'') + '_pages.pdf';
+        downloadBtn.disabled = false;
+        document.getElementById('outName').textContent = lastFileName;
+        log('Split done — extracted', indices.length, 'pages.');
+      } catch(e){ console.error(e); alert('Error: '+e.message); }
+    };
+
+    // Images -> PDF (with optional compression)
+    async function imageFileToDataURL(file, quality){
+      // returns data URL (jpeg) using canvas for optional compression
+      return new Promise((res, rej) => {
+        const img = new Image();
+        const fr = new FileReader();
+        fr.onload = e => { img.src = e.target.result; };
+        fr.onerror = () => rej('FileReader error');
+        img.onload = () => {
+          // draw to canvas, compress if asked
+          const canvas = document.createElement('canvas');
+          // keep page size reasonable: cap dimension to 2480x3508 (A4@300dpi) approx or image dims
+          const maxDim = 3508; // prevent huge canvases
+          let w = img.naturalWidth, h = img.naturalHeight;
+          if(Math.max(w,h) > maxDim){
+            const scale = maxDim / Math.max(w,h);
+            w = Math.round(w * scale);
+            h = Math.round(h * scale);
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img,0,0,w,h);
+          const mime = 'image/jpeg';
+          const dataUrl = canvas.toDataURL(mime, quality); // quality 0.1 - 1.0
+          res(dataUrl);
+        };
+        img.onerror = () => rej('Image load error');
+        fr.readAsDataURL(file);
+      });
+    }
+
+    document.getElementById('img2pdfBtn').onclick = async () => {
+      const input = document.getElementById('imgFiles');
+      if(!input.files.length){ alert('Select image files'); return; }
+      const q = parseFloat(document.getElementById('imgQuality').value || '0.8');
+      if(isNaN(q) || q<=0 || q>1){ alert('Quality must be between 0.1 and 1.0'); return; }
+      try{
+        const pdfDoc = await PDFDocument.create();
+        for(const f of input.files){
+          log('Processing image', f.name);
+          const dataUrl = await imageFileToDataURL(f, q);
+          const base64 = dataUrl.split(',')[1];
+          const imgBytes = Uint8Array.from(atob(base64), c=>c.charCodeAt(0));
+          const img = await pdfDoc.embedJpg(imgBytes);
+          const w = img.width, h = img.height;
+          const page = pdfDoc.addPage([w, h]);
+          page.drawImage(img, { x:0, y:0, width:w, height:h });
+        }
+        const out = await pdfDoc.save();
+        lastPdfBytes = out;
+        lastFileName = 'images_to_pdf.pdf';
+        downloadBtn.disabled = false;
+        document.getElementById('outName').textContent = lastFileName;
+        log('Images→PDF done —', (out.byteLength/1024|0), 'KB');
+      } catch(e){ console.error(e); alert('Error: '+e.message); }
+    };
+
+    // Download last result
+    downloadBtn.onclick = () => {
+      if(!lastPdfBytes){ alert('No result to download'); return; }
+      const blob = new Blob([lastPdfBytes], { type: 'application/pdf' });
+      saveAs(blob, lastFileName || 'output.pdf');
+      log('Downloaded', lastFileName);
+    };
+
+    // small UI helper: enable drag-drop into merge area (optional)
+    // (left as simple — you can extend later)
+  </script>
+</body>
+</html>
