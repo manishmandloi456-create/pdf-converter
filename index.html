@@ -18,7 +18,9 @@
     .hero p{color:var(--muted);margin-top:8px}
 
     .tools{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:26px}
+    /* make cards clickable and accessible */
     .card{background:var(--card);padding:18px;border-radius:10px;box-shadow:0 6px 18px rgba(12,24,40,0.04);border:1px solid #f1f5f9;cursor:pointer}
+    .card:focus{outline:3px solid rgba(107,70,255,0.18)}
     .card .icon{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px}
     .card h3{margin:0;font-size:15px}
     .card p{margin:8px 0 0;color:var(--muted);font-size:13px}
@@ -29,9 +31,14 @@
     @media(max-width:900px){ .tools{grid-template-columns:repeat(2,1fr)} }
     @media(max-width:600px){ .tools{grid-template-columns:1fr} .hero h1{font-size:22px} }
 
-    /* small UI for action area */
     .muted{color:var(--muted);font-size:13px}
     .sr-only{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px)}
+
+    /* visible uploader fallback for embeds that block programmatic clicks */
+    .uploader-visible{display:flex;gap:10px;justify-content:center;margin-top:12px}
+    .uploader-visible button{padding:10px 14px;border-radius:8px;border:0;cursor:pointer}
+    .btn-primary{background:var(--accent);color:white}
+    .btn-ghost{background:#eef2ff;color:#334155}
   </style>
 </head>
 <body>
@@ -52,66 +59,82 @@
     <section class="hero">
       <h1>Every tool you need to work with PDFs — fast & simple</h1>
       <p>Merge, split, convert images, rotate, reorder pages and more. All tools work in your browser — files stay on your device.</p>
-      <!-- Hidden file input kept for tool actions -->
-      <input id="fileInput" type="file" accept="application/pdf,image/*" multiple class="sr-only">
+
+      <div class="uploader-visible" id="uploaderFallback">
+        <!-- Visible uploader as a reliable fallback for embedded contexts -->
+        <button id="chooseFilesBtn" class="btn-ghost">Choose files</button>
+        <button id="clearSelection" class="btn-ghost">Clear</button>
+        <button id="helpBtn" class="btn-primary">Help</button>
+      </div>
+
+      <div class="muted" style="text-align:center;margin-top:8px">Tip: Click any tool card below to start — if your browser blocks the picker the visible "Choose files" button will work.</div>
+
+      <!-- Per-tool file inputs (labels used to trigger native file picker reliably) -->
+      <input id="file-merge" data-tool="merge" type="file" accept="application/pdf,image/*" multiple class="sr-only">
+      <input id="file-split" data-tool="split" type="file" accept="application/pdf" class="sr-only">
+      <input id="file-img2pdf" data-tool="img2pdf" type="file" accept="image/*" multiple class="sr-only">
+      <input id="file-compress" data-tool="compress" type="file" accept="application/pdf" class="sr-only">
+      <input id="file-pdf2jpg" data-tool="pdf2jpg" type="file" accept="application/pdf" class="sr-only">
+      <input id="file-convert" data-tool="convert" type="file" accept="application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.ms-powerpoint,application/pdf" class="sr-only">
     </section>
 
     <section id="tools">
       <h2 style="text-align:center;margin-top:6px">Our Tools</h2>
       <div class="tools">
-        <div class="card" data-tool="merge">
+        <label class="card" for="file-merge" tabindex="0" data-tool="merge">
           <div class="icon" style="background:#fff4f4;color:#ff6b6b">🧩</div>
           <h3>Merge PDF</h3>
           <p>Combine multiple PDF files into one document. Select files in the order you want them merged.</p>
-        </div>
+        </label>
 
-        <div class="card" data-tool="split">
+        <label class="card" for="file-split" tabindex="0" data-tool="split">
           <div class="icon" style="background:#fff7ed;color:#f59e0b">✂️</div>
           <h3>Split PDF</h3>
           <p>Extract specific pages or split a PDF into separate files.</p>
-        </div>
+        </label>
 
-        <div class="card" data-tool="compress">
+        <label class="card" for="file-compress" tabindex="0" data-tool="compress">
           <div class="icon" style="background:#f0fdf4;color:#16a34a">🗜️</div>
           <h3>Compress PDF</h3>
           <p>Reduce PDF file size (basic client-side image compression). For heavy compression use server tools.</p>
-        </div>
+        </label>
 
-        <div class="card" data-tool="img2pdf">
+        <label class="card" for="file-img2pdf" tabindex="0" data-tool="img2pdf">
           <div class="icon" style="background:#f8fafc;color:#3b82f6">🖼️</div>
           <h3>Images → PDF</h3>
           <p>Convert JPG/PNG images into a single PDF file.</p>
-        </div>
+        </label>
 
-        <div class="card" data-tool="rotate">
+        <label class="card" tabindex="0" data-tool="rotate" onclick="alert('Rotate pages UI coming — use Choose files to load a PDF first')">
           <div class="icon" style="background:#fff5f7;color:#db2777">🔁</div>
           <h3>Rotate Pages</h3>
           <p>Rotate selected pages (90°, 180°, 270°).</p>
-        </div>
+        </label>
 
-        <div class="card" data-tool="reorder">
+        <label class="card" tabindex="0" data-tool="reorder" onclick="alert('Reorder pages UI coming — use Choose files to load a PDF first')">
           <div class="icon" style="background:#f5f3ff;color:#6b46ff">🔀</div>
           <h3>Reorder Pages</h3>
           <p>Change the order of pages inside a PDF (enter sequence like 3,1,2).</p>
-        </div>
+        </label>
 
-        <div class="card" data-tool="security">
-          <div class="icon" style="background:#f0f9ff;color:#0369a1">🔓</div>
-          <h3>Unlock / Protect</h3>
-          <p>Remove or add basic password protection to PDF (client-side limited).</p>
-        </div>
-
-        <div class="card" data-tool="pdf2jpg">
-          <div class="icon" style="background:#fff8f0;color:#ff7b00">📝</div>
-          <h3>PDF → JPG</h3>
-          <p>Extract PDF pages as JPG images.</p>
-        </div>
-
-        <div class="card" data-tool="convert">
+        <label class="card" for="file-convert" tabindex="0" data-tool="convert">
           <div class="icon" style="background:#f8fafc;color:#475569">📄</div>
           <h3>Convert to PDF</h3>
           <p>Convert Word / PowerPoint / Excel files to PDF (client-side limited; Office files may require server).</p>
-        </div>
+        </label>
+
+        <label class="card" for="file-pdf2jpg" tabindex="0" data-tool="pdf2jpg">
+          <div class="icon" style="background:#fff8f0;color:#ff7b00">📝</div>
+          <h3>PDF → JPG</h3>
+          <p>Extract PDF pages as JPG images.</p>
+        </label>
+
+        <label class="card" tabindex="0" data-tool="security" onclick="alert('Unlock/Protect UI coming — use Choose files to load a PDF first')">
+          <div class="icon" style="background:#f0f9ff;color:#0369a1">🔓</div>
+          <h3>Unlock / Protect</h3>
+          <p>Remove or add basic password protection to PDF (client-side limited).</p>
+        </label>
+
       </div>
     </section>
 
@@ -123,31 +146,30 @@
 
   <footer class="footer">© FastPDF Tools — Built for embedding in Google Sites</footer>
 
-  <!-- minimal JS: attach click on cards to open file picker or perform tool actions -->
   <script>
-    document.querySelectorAll('.card[data-tool]').forEach(card=>{
-      card.addEventListener('click', ()=>{
-        const t = card.getAttribute('data-tool');
-        const input = document.getElementById('fileInput');
-        // for tools that need files, trigger file picker
-        if(['merge','split','img2pdf','compress','pdf2jpg','convert'].includes(t)){
-          input.value = null; // reset
-          input.click();
-          // after user selects files, you can handle them in change event
-          input.onchange = ()=> handleFilesForTool(t, input.files);
-        } else {
-          alert('Tool "' + t + '" opened. (Feature UI coming)');
-        }
+    // Wire per-input change handlers (inputs correspond to labels/cards)
+    const inputs = document.querySelectorAll('input[type=file][data-tool]');
+    inputs.forEach(inp=>{
+      inp.addEventListener('change', e=>{
+        const tool = inp.dataset.tool || inp.getAttribute('data-tool');
+        if(!e.target.files || e.target.files.length===0) return;
+        const names = Array.from(e.target.files).map(f=>f.name).join(', ');
+        // Simple demo: show selected filenames and which tool was triggered
+        alert('Files selected for ' + tool + ': ' + names + '
+
+(Next: implement processing UI)');
+        // TODO: call actual tool implementations (merge/split/convert)
       });
     });
+    });
 
-    function handleFilesForTool(tool, files){
-      if(!files || files.length === 0) return;
-      // basic demo actions: show names and which tool
-      const names = Array.from(files).map(f=>f.name).join(', ');
-      alert('Selected for ' + tool + ': ' + names);
-      // TODO: wire actual tool implementations (merge/split/etc.) here
-    }
+    // visible uploader fallback button: opens merge file input
+    document.getElementById('chooseFilesBtn').addEventListener('click', ()=> document.getElementById('file-merge').click());
+    document.getElementById('clearSelection').addEventListener('click', ()=>{
+      document.querySelectorAll('input[type=file]').forEach(i=> i.value = null);
+      alert('Selection cleared');
+    });
+    document.getElementById('helpBtn').addEventListener('click', ()=> alert('Click any tool card to start. If your embed blocks the file picker, use "Choose files" above.'));
   </script>
 </body>
 </html>
