@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FastPDF Tools — Simple PDF toolbox</title>
+  <style>
+    :root{--accent:#6b46ff;--muted:#6b7280;--bg:#f6f7fb;--card:#ffffff}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Arial;background:var(--bg);color:#111}
+    header{background:white;border-bottom:1px solid #edf2f7}
+    .container{max-width:1100px;margin:0 auto;padding:20px}
+    .nav{display:flex;align-items:center;gap:16px;padding:12px 0}
+    .logo{display:flex;align-items:center;gap:10px}
+    .logo img{width:36px;height:36px;border-radius:6px}
+    .hero{padding:36px 0;text-align:center}
+    .hero h1{margin:0;font-size:28px}
+    .hero p{color:var(--muted);margin-top:8px}
+
+    .tools{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:26px}
+    /* make cards clickable and accessible */
+    .card{background:var(--card);padding:18px;border-radius:10px;box-shadow:0 6px 18px rgba(12,24,40,0.04);border:1px solid #f1f5f9;cursor:pointer}
+    .card:focus{outline:3px solid rgba(107,70,255,0.18)}
+    .card .icon{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px}
+    .card h3{margin:0;font-size:15px}
+    .card p{margin:8px 0 0;color:var(--muted);font-size:13px}
+
+    .footer{padding:28px 0;color:var(--muted);text-align:center;font-size:13px}
+
+    /* responsive */
+    @media(max-width:900px){ .tools{grid-template-columns:repeat(2,1fr)} }
+    @media(max-width:600px){ .tools{grid-template-columns:1fr} .hero h1{font-size:22px} }
+
+    .muted{color:var(--muted);font-size:13px}
+    .sr-only{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px)}
+
+    /* visible uploader fallback for embeds that block programmatic clicks */
+    .uploader-visible{display:flex;gap:10px;justify-content:center;margin-top:12px}
+    .uploader-visible button{padding:10px 14px;border-radius:8px;border:0;cursor:pointer}
+    .btn-primary{background:var(--accent);color:white}
+    .btn-ghost{background:#eef2ff;color:#334155}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <div class="logo">
+        <img src="/mnt/data/d0836d16-e55b-4b2a-be56-ac4dd5b26b84.png" alt="logo">
+        <strong>FastPDF Tools</strong>
+      </div>
+      <nav style="margin-left:auto;display:flex;gap:14px;align-items:center">
+        <a href="#tools" class="muted">Tools</a>
+        <a href="#about" class="muted">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Every tool you need to work with PDFs — fast & simple</h1>
+      <p>Merge, split, convert images, rotate, reorder pages and more. All tools work in your browser — files stay on your device.</p>
+
+      <div class="uploader-visible" id="uploaderFallback">
+        <!-- Visible uploader as a reliable fallback for embedded contexts -->
+        <button id="chooseFilesBtn" class="btn-ghost">Choose files</button>
+        <button id="clearSelection" class="btn-ghost">Clear</button>
+        <button id="helpBtn" class="btn-primary">Help</button>
+      </div>
+
+      <div class="muted" style="text-align:center;margin-top:8px">Tip: Click any tool card below to start — if your browser blocks the picker the visible "Choose files" button will work.</div>
+
+      <!-- Per-tool file inputs (labels used to trigger native file picker reliably) -->
+      <input id="file-merge" data-tool="merge" type="file" accept="application/pdf,image/*" multiple class="sr-only">
+      <input id="file-split" data-tool="split" type="file" accept="application/pdf" class="sr-only">
+      <input id="file-img2pdf" data-tool="img2pdf" type="file" accept="image/*" multiple class="sr-only">
+      <input id="file-compress" data-tool="compress" type="file" accept="application/pdf" class="sr-only">
+      <input id="file-pdf2jpg" data-tool="pdf2jpg" type="file" accept="application/pdf" class="sr-only">
+      <input id="file-convert" data-tool="convert" type="file" accept="application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.ms-powerpoint,application/pdf" class="sr-only">
+    </section>
+
+    <section id="tools">
+      <h2 style="text-align:center;margin-top:6px">Our Tools</h2>
+      <div class="tools">
+        <label class="card" for="file-merge" tabindex="0" data-tool="merge">
+          <div class="icon" style="background:#fff4f4;color:#ff6b6b">🧩</div>
+          <h3>Merge PDF</h3>
+          <p>Combine multiple PDF files into one document. Select files in the order you want them merged.</p>
+        </label>
+
+        <label class="card" for="file-split" tabindex="0" data-tool="split">
+          <div class="icon" style="background:#fff7ed;color:#f59e0b">✂️</div>
+          <h3>Split PDF</h3>
+          <p>Extract specific pages or split a PDF into separate files.</p>
+        </label>
+
+        <label class="card" for="file-compress" tabindex="0" data-tool="compress">
+          <div class="icon" style="background:#f0fdf4;color:#16a34a">🗜️</div>
+          <h3>Compress PDF</h3>
+          <p>Reduce PDF file size (basic client-side image compression). For heavy compression use server tools.</p>
+        </label>
+
+        <label class="card" for="file-img2pdf" tabindex="0" data-tool="img2pdf">
+          <div class="icon" style="background:#f8fafc;color:#3b82f6">🖼️</div>
+          <h3>Images → PDF</h3>
+          <p>Convert JPG/PNG images into a single PDF file.</p>
+        </label>
+
+        <label class="card" tabindex="0" data-tool="rotate" onclick="alert('Rotate pages UI coming — use Choose files to load a PDF first')">
+          <div class="icon" style="background:#fff5f7;color:#db2777">🔁</div>
+          <h3>Rotate Pages</h3>
+          <p>Rotate selected pages (90°, 180°, 270°).</p>
+        </label>
+
+        <label class="card" tabindex="0" data-tool="reorder" onclick="alert('Reorder pages UI coming — use Choose files to load a PDF first')">
+          <div class="icon" style="background:#f5f3ff;color:#6b46ff">🔀</div>
+          <h3>Reorder Pages</h3>
+          <p>Change the order of pages inside a PDF (enter sequence like 3,1,2).</p>
+        </label>
+
+        <label class="card" for="file-convert" tabindex="0" data-tool="convert">
+          <div class="icon" style="background:#f8fafc;color:#475569">📄</div>
+          <h3>Convert to PDF</h3>
+          <p>Convert Word / PowerPoint / Excel files to PDF (client-side limited; Office files may require server).</p>
+        </label>
+
+        <label class="card" for="file-pdf2jpg" tabindex="0" data-tool="pdf2jpg">
+          <div class="icon" style="background:#fff8f0;color:#ff7b00">📝</div>
+          <h3>PDF → JPG</h3>
+          <p>Extract PDF pages as JPG images.</p>
+        </label>
+
+        <label class="card" tabindex="0" data-tool="security" onclick="alert('Unlock/Protect UI coming — use Choose files to load a PDF first')">
+          <div class="icon" style="background:#f0f9ff;color:#0369a1">🔓</div>
+          <h3>Unlock / Protect</h3>
+          <p>Remove or add basic password protection to PDF (client-side limited).</p>
+        </label>
+
+      </div>
+    </section>
+
+    <section id="about">
+      <h2 style="text-align:center;margin-top:36px">About FastPDF Tools</h2>
+      <p style="text-align:center;max-width:760px;margin:10px auto;color:var(--muted)">This simple PDF toolbox runs entirely in your browser using modern JavaScript libraries. Files are processed locally — we do not upload your files to any server. For advanced compression or heavy-duty conversions a server-based tool is recommended.</p>
+    </section>
+  </main>
+
+  <footer class="footer">© FastPDF Tools — Built for embedding in Google Sites</footer>
+
+  <script>
+    // Wire per-input change handlers (inputs correspond to labels/cards)
+    const inputs = document.querySelectorAll('input[type=file][data-tool]');
+    inputs.forEach(inp=>{
+      inp.addEventListener('change', e=>{
+        const tool = inp.dataset.tool || inp.getAttribute('data-tool');
+        if(!e.target.files || e.target.files.length===0) return;
+        const names = Array.from(e.target.files).map(f=>f.name).join(', ');
+        // Simple demo: show selected filenames and which tool was triggered
+        alert('Files selected for ' + tool + ': ' + names + '
+
+(Next: implement processing UI)');
+        // TODO: call actual tool implementations (merge/split/convert)
+      });
+    });
+    });
+
+    // visible uploader fallback button: opens merge file input
+    document.getElementById('chooseFilesBtn').addEventListener('click', ()=> document.getElementById('file-merge').click());
+    document.getElementById('clearSelection').addEventListener('click', ()=>{
+      document.querySelectorAll('input[type=file]').forEach(i=> i.value = null);
+      alert('Selection cleared');
+    });
+    document.getElementById('helpBtn').addEventListener('click', ()=> alert('Click any tool card to start. If your embed blocks the file picker, use "Choose files" above.'));
+  </script>
+</body>
+</html>
