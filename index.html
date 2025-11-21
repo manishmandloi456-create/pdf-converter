@@ -146,21 +146,82 @@
 
   <footer class="footer">© FastPDF Tools — Built for embedding in Google Sites</footer>
 
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script>
+    // helpers
+    const { PDFDocument } = PDFLib;
+    function readFileAsArrayBuffer(file){
+      return new Promise((res, rej)=>{
+        const r=new FileReader(); r.onload = e=>res(e.target.result); r.onerror=rej; r.readAsArrayBuffer(file);
+      });
+    }
+    async function imageFileToDataURL(file, quality=0.8){
+      return new Promise((res,rej)=>{
+        const fr=new FileReader(); const img=new Image();
+        fr.onload = e=> img.src = e.target.result;
+        fr.onerror = ()=> rej('read error');
+        img.onload = ()=>{
+          const canvas=document.createElement('canvas'); const maxDim=3508; let w=img.naturalWidth,h=img.naturalHeight;
+          if(Math.max(w,h)>maxDim){ const scale = maxDim/Math.max(w,h); w=Math.round(w*scale); h=Math.round(h*scale); }
+          canvas.width=w; canvas.height=h; const ctx=canvas.getContext('2d'); ctx.drawImage(img,0,0,w,h);
+          res(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = ()=> rej('img load'); fr.readAsDataURL(file);
+      });
+    }
+
+    // merge PDFs
+    async function mergePdfs(files){
+      const outDoc = await PDFDocument.create();
+      for(const f of files){
+        const arr = await readFileAsArrayBuffer(f);
+        const src = await PDFDocument.load(arr);
+        const copied = await outDoc.copyPages(src, src.getPageIndices());
+        copied.forEach(p=> outDoc.addPage(p));
+      }
+      const bytes = await outDoc.save();
+      const blob = new Blob([bytes], {type:'application/pdf'});
+      saveAs(blob, 'merged.pdf');
+    }
+
+    // images -> pdf
+    async function imagesToPdf(files, quality=0.8){
+      const pdf = await PDFDocument.create();
+      for(const f of files){
+        const dataUrl = await imageFileToDataURL(f, quality);
+        const b64 = dataUrl.split(',')[1];
+        const bytes = Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
+        const img = await pdf.embedJpg(bytes);
+        const page = pdf.addPage([img.width, img.height]);
+        page.drawImage(img, {x:0,y:0,width:img.width,height:img.height});
+      }
+      const out = await pdf.save(); saveAs(new Blob([out],{type:'application/pdf'}), 'images_to_pdf.pdf');
+    }
+
     // Wire per-input change handlers (inputs correspond to labels/cards)
     const inputs = document.querySelectorAll('input[type=file][data-tool]');
     inputs.forEach(inp=>{
-      inp.addEventListener('change', e=>{
+      inp.addEventListener('change', async e=>{
         const tool = inp.dataset.tool || inp.getAttribute('data-tool');
         if(!e.target.files || e.target.files.length===0) return;
-        const names = Array.from(e.target.files).map(f=>f.name).join(', ');
-        // Simple demo: show selected filenames and which tool was triggered
-        alert('Files selected for ' + tool + ': ' + names + '
+        const files = Array.from(e.target.files);
+        const names = files.map(f=>f.name).join(', ');
+        // quick behavior: if user selected files and tool is supported, run it immediately
+        try{
+          if(tool === 'merge'){
+            await mergePdfs(files);
+          } else if(tool === 'img2pdf'){
+            await imagesToPdf(files, 0.8);
+          } else {
+            alert('Files selected for ' + tool + ': ' + names + '
 
-(Next: implement processing UI)');
-        // TODO: call actual tool implementations (merge/split/convert)
+(Processing for this tool is not yet implemented)');
+          }
+        }catch(err){
+          console.error(err); alert('Error processing files: ' + err.message);
+        }
       });
-    });
     });
 
     // visible uploader fallback button: opens merge file input
